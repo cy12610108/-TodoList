@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人待办 TodoList</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --muted: #9ca3af;
+            --text: #e5e7eb;
+            --accent: #22c55e;
+            --accent-weak: #16a34a;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --border: #1f2937;
+            --chip: #1f2937;
+            --shadow: 0 6px 24px rgba(0,0,0,.35);
+            --field-bg: #0b1220;
+            --btn-bg: #0c1426;
+            --btn-bg-hover: #0e1a30;
+        }
+
+        body[data-theme="light"] {
+            --bg: #f5f7fb;
+            --panel: #ffffff;
+            --muted: #64748b;
+            --text: #0f172a;
+            --accent: #16a34a;
+            --accent-weak: #22c55e;
+            --danger: #b91c1c;
+            --warning: #b45309;
+            --info: #1d4ed8;
+            --border: #e5e7eb;
+            --chip: #f1f5f9;
+            --shadow: 0 6px 24px rgba(0,0,0,.08);
+            --field-bg: #ffffff;
+            --btn-bg: #f8fafc;
+            --btn-bg-hover: #eef2f7;
+        }
+
+        body[data-theme="light"] .badge-pri-1 { background: rgba(239, 68, 68, .30); border-color: #991b1b; color: #7f1d1d; }
+        body[data-theme="light"] .badge-pri-2 { background: rgba(245, 158, 11, .30); border-color: #b45309; color: #92400e; }
+        body[data-theme="light"] .badge-pri-3 { background: rgba(59, 130, 246, .30); border-color: #1d4ed8; color: #1e40af; }
+        body[data-theme="light"] .badge-pri-4 { background: rgba(100, 116, 139, .34); border-color: #64748b; color: #334155; }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            background: radial-gradient(1200px 800px at 100% -10%, rgba(0, 112, 243, .08), transparent 40%),
+                        radial-gradient(1000px 600px at 0% 0%, rgba(34, 197, 94, .10), transparent 35%),
+                        var(--bg);
+            color: var(--text);
+            font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Microsoft Yahei", "Noto Sans", "PingFang SC", sans-serif;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+        header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: .3px;
+        }
+        .meta {
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1.1fr .9fr;
+            gap: 16px;
+        }
+        @media (max-width: 960px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)), var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+        }
+        .section { padding: 16px; }
+        .section + .section { border-top: 1px solid var(--border); }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .toolbar .grow { flex: 1 1 220px; }
+        .toolbar .full { flex: 1 0 100%; }
+        .toolbar .spacer { flex: 1 0 auto; }
+
+        input[type="text"], input[type="date"], input[type="datetime-local"], textarea, select {
+            width: 100%;
+            background: var(--field-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 34px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%23cbd5e1'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 12px 12px;
+        }
+        body[data-theme="light"] select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%23334155'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        }
+        #priorityInput { min-width: 90px; }
+        input[type="text"]:focus, input[type="date"]:focus, input[type="datetime-local"]:focus, textarea:focus, select:focus {
+            border-color: var(--info);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, .2);
+        }
+        input[type="datetime-local"] {
+            padding: 9px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        body[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(1) brightness(1.2); }
+        textarea { min-height: 74px; resize: vertical; }
+
+        .row { display: grid; gap: 10px; }
+        .row.cols-2 { grid-template-columns: 1fr 1fr; }
+        .row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        @media (max-width: 720px) {
+            .row.cols-2, .row.cols-3 { grid-template-columns: 1fr; }
+        }
+
+        .btn {
+            appearance: none;
+            border: 1px solid var(--border);
+            background: var(--btn-bg);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform .03s ease, background .15s ease, border-color .15s ease;
+        }
+        .btn:hover { background: var(--btn-bg-hover); }
+        .btn:active { transform: translateY(1px); }
+        .btn.primary {
+            background: linear-gradient(180deg, rgba(34,197,94,.3), rgba(34,197,94,.18));
+            border-color: #14532d;
+        }
+        .btn.warn {
+            background: linear-gradient(180deg, rgba(245,158,11,.25), rgba(245,158,11,.15));
+            border-color: #7c4a03;
+        }
+        .btn.danger {
+            background: linear-gradient(180deg, rgba(239,68,68,.28), rgba(239,68,68,.18));
+            border-color: #7f1d1d;
+        }
+        .btn.ghost { background: transparent; }
+        .btn.small { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+        /* Dark theme emphasis for critical/danger buttons */
+        body[data-theme="dark"] .btn.danger {
+            background: linear-gradient(180deg, rgba(239,68,68,.50), rgba(239,68,68,.32));
+            border-color: #dc2626;
+            color: #fee2e2;
+        }
+        body[data-theme="dark"] .btn.danger:hover {
+            background: linear-gradient(180deg, rgba(239,68,68,.62), rgba(239,68,68,.44));
+            border-color: #f87171;
+        }
+        /* Dark theme: highlight primary and key small buttons */
+        body[data-theme="dark"] #saveBtn.btn.primary {
+            background: linear-gradient(180deg, rgba(34,197,94,.58), rgba(34,197,94,.36));
+            border-color: #16a34a;
+            color: #ecfdf5;
+            box-shadow: 0 0 0 1px rgba(34,197,94,.25) inset;
+        }
+        body[data-theme="dark"] #saveBtn.btn.primary:hover {
+            background: linear-gradient(180deg, rgba(34,197,94,.68), rgba(34,197,94,.46));
+            border-color: #22c55e;
+        }
+        body[data-theme="dark"] #addTagBtn.btn.small,
+        body[data-theme="dark"] #exportBtn.btn.small,
+        body[data-theme="dark"] #importBtn.btn.small {
+            background: linear-gradient(180deg, rgba(59,130,246,.40), rgba(59,130,246,.26));
+            border-color: #2563eb;
+            color: #dbeafe;
+            box-shadow: 0 0 0 1px rgba(59,130,246,.22) inset;
+        }
+        body[data-theme="dark"] #addTagBtn.btn.small:hover,
+        body[data-theme="dark"] #exportBtn.btn.small:hover,
+        body[data-theme="dark"] #importBtn.btn.small:hover {
+            background: linear-gradient(180deg, rgba(59,130,246,.54), rgba(59,130,246,.38));
+            border-color: #3b82f6;
+        }
+        body[data-theme="dark"] #resetBtn.btn {
+            background: linear-gradient(180deg, rgba(148,163,184,.28), rgba(148,163,184,.18));
+            border-color: #64748b;
+            color: #e5e7eb;
+            box-shadow: 0 0 0 1px rgba(148,163,184,.2) inset;
+        }
+        body[data-theme="dark"] #resetBtn.btn:hover {
+            background: linear-gradient(180deg, rgba(148,163,184,.38), rgba(148,163,184,.26));
+            border-color: #94a3b8;
+        }
+
+        .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+        /* Scroll when items exceed around 4 */
+        #taskList { max-height: 420px; overflow: auto; }
+        #overdueList { max-height: 360px; overflow: auto; }
+        #dueSoonList { max-height: 360px; overflow: auto; }
+        .item { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; padding: 12px 14px; align-items: start; }
+        .item + .item { border-top: 0; }
+        .item.done { opacity: .6; }
+
+        .item-main { display: grid; gap: 6px; }
+        .title-line { display: flex; gap: 8px; align-items: center; }
+        .title { font-weight: 600; }
+        .muted { color: var(--muted); font-size: 12px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { padding: 3px 8px; border-radius: 999px; background: var(--chip); border: 1px solid var(--border); font-size: 11px; color: var(--text); }
+        .chip.badge { font-weight: 600; }
+        .chip.colorful { border: none; color: #0f172a; }
+        body[data-theme="dark"] .chip.colorful { color: #0b1220; }
+        .chip.suggest { cursor: pointer; }
+        .chip.suggest:hover { filter: brightness(1.05); }
+        .badge-pri-1 { background: rgba(239, 68, 68, .15); border-color: #7f1d1d; color: #fecaca; }
+        .badge-pri-2 { background: rgba(245, 158, 11, .15); border-color: #7c4a03; color: #fde68a; }
+        .badge-pri-3 { background: rgba(59, 130, 246, .15); border-color: #1e3a8a; color: #bfdbfe; }
+        .badge-pri-4 { background: rgba(148, 163, 184, .15); border-color: #475569; color: #e5e7eb; }
+        /* Dark theme: stronger priority badges for visibility */
+        body[data-theme="dark"] .chip.badge { font-weight: 700; }
+        body[data-theme="dark"] .badge-pri-1 { background: rgba(239,68,68,.38); border-color: #dc2626; color: #fecaca; box-shadow: 0 0 0 1px rgba(239,68,68,.25) inset; }
+        body[data-theme="dark"] .badge-pri-2 { background: rgba(245,158,11,.38); border-color: #d97706; color: #fde68a; box-shadow: 0 0 0 1px rgba(245,158,11,.22) inset; }
+        body[data-theme="dark"] .badge-pri-3 { background: rgba(59,130,246,.38); border-color: #2563eb; color: #bfdbfe; box-shadow: 0 0 0 1px rgba(59,130,246,.22) inset; }
+        body[data-theme="dark"] .badge-pri-4 { background: rgba(148,163,184,.34); border-color: #64748b; color: #e5e7eb; box-shadow: 0 0 0 1px rgba(148,163,184,.22) inset; }
+        /* Urgent priority: subtle pulse to draw attention */
+        .item:not(.done) .badge-pri-1 { animation: pri1Pulse 2.6s ease-in-out infinite; }
+        @keyframes pri1Pulse {
+            0%, 100% { filter: drop-shadow(0 0 0 rgba(239,68,68,0)); }
+            50% { filter: drop-shadow(0 0 6px rgba(239,68,68,.35)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .item .badge-pri-1 { animation: none; }
+        }
+
+        .item-actions { display: flex; gap: 6px; }
+        .checkbox { width: 18px; height: 18px; margin-top: 2px; }
+
+        .empty { text-align: center; color: var(--muted); padding: 24px; }
+        .stats { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 12px; }
+        .stats strong { color: var(--text); }
+
+        .note { white-space: pre-wrap; color: #cbd5e1; font-size: 13px; }
+
+        .footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .footer .left, .footer .right { display: flex; gap: 8px; align-items: center; }
+
+        .hint { color: var(--muted); font-size: 12px; }
+        .danger-text { color: #fca5a5; }
+        .overdue { color: var(--danger); font-weight: 700; }
+        header .theme-select { width: auto; min-width: 110px; }
+
+        .card.full { grid-column: 1 / -1; }
+        .kanban-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 960px) { .kanban-grid { grid-template-columns: 1fr; } }
+        .kanban-block { display: grid; gap: 8px; }
+
+        .progress { height: 10px; border-radius: 999px; background: var(--chip); border: 1px solid var(--border); overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-weak)); }
+
+        .dist { display: grid; gap: 8px; }
+        .dist-row { display: grid; grid-template-columns: 80px 1fr 60px; gap: 8px; align-items: center; }
+        .dist-bar { height: 8px; border-radius: 6px; background: var(--chip); border: 1px solid var(--border); overflow: hidden; }
+        .dist-bar > span { display: block; height: 100%; background: var(--info); }
+
+        .toast-wrap { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 9999; }
+        .toast { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>个人待办 TodoList</h1>
+            <div class="stats" id="statsBar">
+                <span>共 <strong id="statTotal">0</strong> 项</span>
+                <span>未完成 <strong id="statOpen">0</strong></span>
+                <span>已完成 <strong id="statDone">0</strong></span>
+            </div>
+            <select id="themeSelect" class="theme-select" title="主题">
+                <option value="dark">dark</option>
+                <option value="light">light</option>
+            </select>
+        </header>
+
+        <div class="grid">
+            <section class="card">
+                <div class="section">
+                    <div class="toolbar">
+                        <input id="searchInput" class="grow" type="text" placeholder="搜索标题、标签、备注... (Ctrl+/ 聚焦)" />
+                        <select id="statusFilter" title="状态">
+                            <option value="all">全部</option>
+                            <option value="open">未完成</option>
+                            <option value="done">已完成</option>
+                        </select>
+                        <select id="priorityFilter" title="优先级过滤">
+                            <option value="all">优先级：全部</option>
+                            <option value="1">1-紧急</option>
+                            <option value="2">2-高</option>
+                            <option value="3">3-中</option>
+                            <option value="4">4-低</option>
+                        </select>
+                        <select id="sortSelect" title="排序">
+                            <option value="created-desc">按创建时间（新→旧）</option>
+                            <option value="created-asc">按创建时间（旧→新）</option>
+                            <option value="priority-asc">按优先级（紧急→低）</option>
+                            <option value="priority-desc">按优先级（低→紧急）</option>
+                            <option value="due-asc">按截止日期（近→远）</option>
+                            <option value="due-desc">按截止日期（远→近）</option>
+                            <option value="title-asc">按标题（A→Z）</option>
+                            <option value="title-desc">按标题（Z→A）</option>
+                        </select>
+                        <button id="toggleCompletedBtn" class="btn ghost" title="显示/隐藏已完成">显示已完成</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <form id="taskForm">
+                        <div class="row cols-2">
+                            <div>
+                                <label class="muted">标题</label>
+                                <input id="titleInput" type="text" placeholder="做什么？必填" required />
+                            </div>
+                            <div class="row cols-2">
+                                <div>
+                                    <label class="muted">优先级</label>
+                                    <select id="priorityInput">
+                                        <option value="1">1-紧急</option>
+                                        <option value="2" selected>2-高</option>
+                                        <option value="3">3-中</option>
+                                        <option value="4">4-低</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="muted">截止时间</label>
+                                    <input id="dueDateInput" type="datetime-local" step="1" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row cols-2" style="margin-top:10px;">
+                            <div>
+                                <label class="muted">标签</label>
+                                <div class="toolbar">
+                                    <input id="tagInput" class="full" type="text" placeholder="输入标签后点新增或回车" />
+                                    <button id="addTagBtn" type="button" class="btn small">新增</button>
+                                </div>
+                                <div id="tagSuggest" class="chips" style="margin-top:6px;"></div>
+                                <div id="tagListForm" class="chips" style="margin-top:6px;"></div>
+                            </div>
+                            <div>
+                                <label class="muted">备注</label>
+                                <input id="noteInput" type="text" placeholder="可选" />
+                            </div>
+                        </div>
+                        <div class="toolbar" style="margin-top:12px;">
+                            <div class="spacer"></div>
+                            <button id="saveBtn" type="submit" class="btn primary">添加</button>
+                            <button id="resetBtn" type="button" class="btn">清空输入</button>
+                            <button id="cancelEditBtn" type="button" class="btn warn" style="display:none;">取消编辑</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section class="card" style="overflow: hidden;">
+                <div class="section" style="padding-bottom: 12px;">
+                    <div class="footer">
+                        <div class="left">
+                            <button id="clearCompletedBtn" class="btn danger small">清理已完成</button>
+                            <span class="hint">小技巧：双击任务标题可快速编辑</span>
+                        </div>
+                        <div class="right">
+                            <input id="importFile" type="file" accept="application/json" style="display:none" />
+                            <button id="exportBtn" class="btn small">导出 JSON</button>
+                            <button id="importBtn" class="btn small">导入 JSON</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <ul id="taskList" class="list"></ul>
+                    <div id="emptyState" class="empty" style="display:none;">暂无待办，开始添加一条吧。</div>
+                </div>
+            </section>
+
+            <section class="card full">
+                <div class="section">
+                    <div class="toolbar">
+                        <strong>看板</strong>
+                        <div class="spacer"></div>
+                        <button id="refreshDashboardBtn" class="btn small">刷新</button>
+                        <button id="enableNotifyBtn" class="btn small">启用通知</button>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="kanban-grid">
+                        <div class="kanban-block">
+                            <div class="muted">完成率</div>
+                            <div class="progress"><div id="progressBar" class="progress-bar" style="width:0%"></div></div>
+                            <div class="muted"><span id="progressText">0%</span></div>
+                        </div>
+                        <div class="kanban-block">
+                            <div class="muted">优先级分布</div>
+                            <div id="priorityDist" class="dist"></div>
+                        </div>
+                        <div class="kanban-block">
+                            <div class="muted">标签占比（Top 8）</div>
+                            <div id="tagDist" class="dist"></div>
+                        </div>
+                        <div class="kanban-block">
+                            <div class="muted">即将到期（24小时内）</div>
+                            <ul id="dueSoonList" class="list"></ul>
+                        </div>
+                        <div class="kanban-block">
+                            <div class="muted">已超期（<strong id="overdueCount">0</strong>）</div>
+                            <ul id="overdueList" class="list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'todoListV1';
+        const THEME_KEY = 'todoThemeV1';
+        /** @type {Array<{id:string,title:string,priority:number,dueDate:string|null,tags:string[],note:string,done:boolean,createdAt:number,updatedAt:number}>} */
+        let tasks = [];
+        let editingId = null;
+        let showCompleted = true;
+        let notifyTimer = null;
+        let uiRefreshTimer = null;
+        let formTags = [];
+        let tagUsageMap = new Map(); // tag(lower) -> count
+
+        const $ = (id) => document.getElementById(id);
+
+        function generateId() {
+            return 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+        }
+
+        function saveTasks() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            renderStats();
+            renderDashboard();
+        }
+
+        function loadTasks() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                tasks = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(tasks)) tasks = [];
+            } catch (e) {
+                tasks = [];
+            }
+        }
+
+        function formatDate(isoLike) {
+            if (!isoLike) return '';
+            try {
+                const d = new Date(isoLike);
+                if (Number.isNaN(d.getTime())) return '';
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                const ss = String(d.getSeconds()).padStart(2, '0');
+                return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+            } catch { return ''; }
+        }
+
+        function toInputDateTimeLocalValue(isoLike) {
+            if (!isoLike) return '';
+            try {
+                const d = new Date(isoLike);
+                if (Number.isNaN(d.getTime())) return '';
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                const ss = String(d.getSeconds()).padStart(2, '0');
+                return `${y}-${m}-${day}T${hh}:${mm}:${ss}`;
+            } catch { return ''; }
+        }
+
+        function parseTags(input) {
+            // 已不使用逗号输入；保留函数以兼容导入
+            return (input || '')
+                .split(',')
+                .map(x => x.trim())
+                .filter(Boolean)
+                .slice(0, 12);
+        }
+
+        function colorfulBgForTag(tag) {
+            const str = String(tag);
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i) | 0;
+            const hue = Math.abs(hash) % 360;
+            const light = document.body.getAttribute('data-theme') === 'light' ? 80 : 65;
+            const sat = 75;
+            return `hsl(${hue} ${sat}% ${light}%)`;
+        }
+
+        function renderFormTags(tagsArr) {
+            const wrap = $('tagListForm');
+            wrap.innerHTML = '';
+            for (const t of tagsArr) {
+                const chip = document.createElement('span');
+                chip.className = 'chip colorful';
+                chip.style.background = colorfulBgForTag(t);
+                chip.textContent = t;
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'btn small';
+                rm.textContent = '×';
+                rm.style.marginLeft = '6px';
+                rm.addEventListener('click', () => {
+                    formTags = formTags.filter(x => x.toLowerCase() !== t.toLowerCase());
+                    renderFormTags(formTags);
+                });
+                const box = document.createElement('span');
+                box.className = 'chip';
+                box.style.background = 'transparent';
+                box.style.border = 'none';
+                box.appendChild(chip);
+                box.appendChild(rm);
+                wrap.appendChild(box);
+            }
+        }
+
+        function renderTagSuggest() {
+            const wrap = $('tagSuggest');
+            if (!wrap) return;
+            // 统计所有任务标签的使用次数
+            tagUsageMap = new Map();
+            for (const t of tasks) {
+                for (const tag of (t.tags || [])) {
+                    const key = String(tag).toLowerCase();
+                    tagUsageMap.set(key, (tagUsageMap.get(key) || 0) + 1);
+                }
+            }
+            // 取 Top 10，排除已在表单中的标签
+            const inForm = new Set(formTags.map(x => x.toLowerCase()));
+            const top = Array.from(tagUsageMap.entries())
+                .filter(([k]) => !inForm.has(k))
+                .sort((a,b)=>b[1]-a[1])
+                .slice(0, 10)
+                .map(([k]) => k);
+            wrap.innerHTML = '';
+            for (const key of top) {
+                const chip = document.createElement('span');
+                chip.className = 'chip colorful suggest';
+                chip.style.background = colorfulBgForTag(key);
+                chip.textContent = key;
+                chip.title = '点击添加该标签';
+                chip.addEventListener('click', () => {
+                    if (!formTags.find(x => x.toLowerCase() === key)) {
+                        formTags.push(key);
+                        renderFormTags(formTags);
+                        renderTagSuggest();
+                    }
+                });
+                wrap.appendChild(chip);
+            }
+        }
+
+        function getFilters() {
+            return {
+                q: $('searchInput').value.trim().toLowerCase(),
+                status: $('statusFilter').value,
+                priority: $('priorityFilter').value,
+                sort: $('sortSelect').value,
+                showCompleted,
+            };
+        }
+
+        function applyFilters(source) {
+            const { q, status, priority, showCompleted } = getFilters();
+            let list = [...source];
+            if (!showCompleted) {
+                list = list.filter(t => !t.done);
+            }
+            if (status !== 'all') {
+                const wantDone = status === 'done';
+                list = list.filter(t => t.done === wantDone);
+            }
+            if (priority !== 'all') {
+                const p = Number(priority);
+                list = list.filter(t => t.priority === p);
+            }
+            if (q) {
+                list = list.filter(t => {
+                    const hay = [
+                        t.title,
+                        t.note || '',
+                        ...(t.tags || [])
+                    ].join(' ').toLowerCase();
+                    return hay.includes(q);
+                });
+            }
+            return list;
+        }
+
+        function sortTasks(list) {
+            const mode = $('sortSelect').value;
+            const compareText = (a, b) => a.localeCompare(b, 'zh-Hans-CN');
+            const dueTs = (t) => t.dueDate ? new Date(t.dueDate).getTime() : Number.POSITIVE_INFINITY;
+            const now = Date.now();
+            switch (mode) {
+                case 'created-asc':
+                    return list.sort((a, b) => a.createdAt - b.createdAt);
+                case 'created-desc':
+                    return list.sort((a, b) => b.createdAt - a.createdAt);
+                case 'priority-asc':
+                    return list.sort((a, b) => a.priority - b.priority || a.createdAt - b.createdAt);
+                case 'priority-desc':
+                    return list.sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
+                case 'due-asc':
+                    return list.sort((a, b) => dueTs(a) - dueTs(b));
+                case 'due-desc':
+                    return list.sort((a, b) => dueTs(b) - dueTs(a));
+                case 'title-asc':
+                    return list.sort((a, b) => compareText(a.title, b.title));
+                case 'title-desc':
+                    return list.sort((a, b) => compareText(b.title, a.title));
+                default:
+                    // 默认将已超期的未完成任务放前面
+                    return list.sort((a, b) => {
+                        const ao = a.dueDate && !a.done && new Date(a.dueDate).getTime() < now ? 0 : 1;
+                        const bo = b.dueDate && !b.done && new Date(b.dueDate).getTime() < now ? 0 : 1;
+                        if (ao !== bo) return ao - bo;
+                        return b.createdAt - a.createdAt;
+                    });
+            }
+        }
+
+        function renderStats() {
+            const total = tasks.length;
+            const done = tasks.filter(t => t.done).length;
+            const open = total - done;
+            $('statTotal').textContent = String(total);
+            $('statOpen').textContent = String(open);
+            $('statDone').textContent = String(done);
+        }
+
+        function createPriorityBadge(priority) {
+            const span = document.createElement('span');
+            span.className = `chip badge badge-pri-${priority}`;
+            span.textContent = ({1: '紧急', 2: '高', 3: '中', 4: '低'})[priority] || '未知';
+            return span;
+        }
+
+        function renderTasks() {
+            const container = $('taskList');
+            container.innerHTML = '';
+            let list = applyFilters(tasks);
+            list = sortTasks(list);
+
+            $('emptyState').style.display = list.length ? 'none' : 'block';
+            $('toggleCompletedBtn').textContent = showCompleted ? '隐藏已完成' : '显示已完成';
+
+            for (const t of list) {
+                const li = document.createElement('li');
+                li.className = 'item card' + (t.done ? ' done' : '');
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'checkbox';
+                cb.checked = !!t.done;
+                cb.addEventListener('change', () => toggleDone(t.id, cb.checked));
+
+                const main = document.createElement('div');
+                main.className = 'item-main';
+
+                const titleLine = document.createElement('div');
+                titleLine.className = 'title-line';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'title';
+                titleEl.textContent = t.title;
+                titleEl.title = '双击编辑';
+                titleEl.addEventListener('dblclick', () => beginEdit(t.id));
+
+                const pri = createPriorityBadge(t.priority);
+
+                const info = document.createElement('div');
+                info.className = 'muted';
+                const nowTs = Date.now();
+                const isOverdue = t.dueDate ? (new Date(t.dueDate).getTime() < nowTs) && !t.done : false;
+                const dueText = t.dueDate ? `截止：${formatDate(t.dueDate)}` : '无截止时间';
+                info.textContent = '';
+                info.appendChild(document.createTextNode(dueText));
+                if (isOverdue) {
+                    info.appendChild(document.createTextNode(' · '));
+                    const od = document.createElement('span');
+                    od.className = 'overdue';
+                    od.textContent = '已超期';
+                    info.appendChild(od);
+                }
+                info.appendChild(document.createTextNode(`  · 创建：${new Date(t.createdAt).toLocaleString()}`));
+
+                const chips = document.createElement('div');
+                chips.className = 'chips';
+                if (t.tags && t.tags.length) {
+                    for (const tag of t.tags) {
+                        const chip = document.createElement('span');
+                        chip.className = 'chip colorful';
+                        chip.style.background = colorfulBgForTag(tag);
+                        chip.textContent = tag;
+                        chips.appendChild(chip);
+                    }
+                }
+                if (t.note) {
+                    const chip = document.createElement('span');
+                    chip.className = 'chip';
+                    chip.textContent = '备注';
+                    chips.appendChild(chip);
+                }
+
+                const note = document.createElement('div');
+                if (t.note) {
+                    note.className = 'note';
+                    note.textContent = t.note;
+                }
+
+                titleLine.appendChild(pri);
+                titleLine.appendChild(titleEl);
+
+                main.appendChild(titleLine);
+                main.appendChild(info);
+                if (chips.childElementCount) main.appendChild(chips);
+                if (t.note) main.appendChild(note);
+
+                const actions = document.createElement('div');
+                actions.className = 'item-actions';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn small';
+                editBtn.textContent = '编辑';
+                editBtn.addEventListener('click', () => beginEdit(t.id));
+
+                const delayBtn = document.createElement('button');
+                delayBtn.className = 'btn small';
+                delayBtn.textContent = '+1天';
+                delayBtn.title = '截止时间顺延 1 天';
+                delayBtn.addEventListener('click', () => delayOneDay(t.id));
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn small danger';
+                delBtn.textContent = '删除';
+                delBtn.addEventListener('click', () => deleteTask(t.id));
+
+                actions.appendChild(editBtn);
+                actions.appendChild(delayBtn);
+                actions.appendChild(delBtn);
+
+                li.appendChild(cb);
+                li.appendChild(main);
+                li.appendChild(actions);
+                container.appendChild(li);
+            }
+        }
+
+        function addTask(task) {
+            tasks.unshift(task);
+            saveTasks();
+            renderTasks();
+            scheduleDueReminders();
+        }
+
+        function updateTask(id, partial) {
+            const idx = tasks.findIndex(t => t.id === id);
+            if (idx === -1) return;
+            const previous = tasks[idx];
+            const next = { ...previous, ...partial, updatedAt: Date.now() };
+            // 截止时间变更后，重置提醒标记
+            if (Object.prototype.hasOwnProperty.call(partial, 'dueDate') && partial.dueDate !== previous.dueDate) {
+                next.reminded30 = false;
+            }
+            // 任务由完成改为未完成，且截止在未来，重置提醒标记
+            if (Object.prototype.hasOwnProperty.call(partial, 'done') && partial.done === false && previous.done === true) {
+                if (next.dueDate && new Date(next.dueDate).getTime() > Date.now()) {
+                    next.reminded30 = false;
+                }
+            }
+            tasks[idx] = next;
+            saveTasks();
+            renderTasks();
+            scheduleDueReminders();
+        }
+
+        function deleteTask(id) {
+            const t = tasks.find(x => x.id === id);
+            if (!t) return;
+            if (!confirm(`确定删除「${t.title}」吗？此操作不可恢复。`)) return;
+            tasks = tasks.filter(x => x.id !== id);
+            saveTasks();
+            renderTasks();
+            scheduleDueReminders();
+            if (editingId === id) cancelEdit();
+        }
+
+        function toggleDone(id, done) {
+            updateTask(id, { done: !!done });
+        }
+
+        function delayOneDay(id) {
+            const t = tasks.find(x => x.id === id);
+            if (!t) return;
+            const base = t.dueDate ? new Date(t.dueDate) : new Date();
+            base.setDate(base.getDate() + 1);
+            updateTask(id, { dueDate: base.toISOString() });
+        }
+
+        function beginEdit(id) {
+            const t = tasks.find(x => x.id === id);
+            if (!t) return;
+            editingId = id;
+            $('titleInput').value = t.title;
+            $('priorityInput').value = String(t.priority);
+            $('dueDateInput').value = t.dueDate ? toInputDateTimeLocalValue(t.dueDate) : '';
+            formTags = [...(t.tags || [])];
+            renderFormTags(formTags);
+            renderTagSuggest();
+            $('noteInput').value = t.note || '';
+            $('saveBtn').textContent = '保存';
+            $('cancelEditBtn').style.display = '';
+            $('titleInput').focus();
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            $('taskForm').reset();
+            formTags = [];
+            renderFormTags(formTags);
+            renderTagSuggest();
+            $('saveBtn').textContent = '添加';
+            $('cancelEditBtn').style.display = 'none';
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            const title = $('titleInput').value.trim();
+            if (!title) { $('titleInput').focus(); return; }
+            const priority = Number($('priorityInput').value) || 3;
+            const dueDateRaw = $('dueDateInput').value.trim();
+            const dueDate = dueDateRaw ? new Date(dueDateRaw).toISOString() : null;
+            const tags = [...formTags];
+            const note = $('noteInput').value.trim();
+
+            if (editingId) {
+                updateTask(editingId, { title, priority, dueDate, tags, note });
+                cancelEdit();
+                return;
+            }
+
+            const now = Date.now();
+            addTask({
+                id: generateId(),
+                title,
+                priority,
+                dueDate,
+                tags,
+                note,
+                done: false,
+                reminded30: false,
+                createdAt: now,
+                updatedAt: now,
+            });
+            $('taskForm').reset();
+            formTags = [];
+            renderFormTags(formTags);
+            renderTagSuggest();
+            $('titleInput').focus();
+        }
+
+        function clearCompleted() {
+            const before = tasks.length;
+            tasks = tasks.filter(t => !t.done);
+            const removed = before - tasks.length;
+            saveTasks();
+            renderTasks();
+            if (removed) alert(`已清理 ${removed} 条已完成任务。`);
+        }
+
+        function exportJson() {
+            const data = JSON.stringify({
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                tasks,
+            }, null, 2);
+            const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+            const a = document.createElement('a');
+            const ts = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const name = `todo-backup-${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        function importJson(file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const obj = JSON.parse(String(reader.result || '{}'));
+                    if (!obj || !Array.isArray(obj.tasks)) throw new Error('无效的数据格式');
+                    const imported = obj.tasks.map(sanitizeTask).filter(Boolean);
+                    if (!imported.length) throw new Error('没有可导入的任务');
+                    tasks = imported;
+                    saveTasks();
+                    renderTasks();
+                    alert(`已导入 ${tasks.length} 条任务。`);
+                } catch (err) {
+                    alert('导入失败：' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function sanitizeTask(t) {
+            if (!t || typeof t !== 'object') return null;
+            const id = typeof t.id === 'string' ? t.id : generateId();
+            const title = String(t.title || '').trim();
+            if (!title) return null;
+            const priority = [1,2,3,4].includes(Number(t.priority)) ? Number(t.priority) : 3;
+            const dueDate = t.dueDate ? new Date(String(t.dueDate)).toISOString() : null;
+            const tags = Array.isArray(t.tags) ? t.tags.map(x => String(x).trim()).filter(Boolean).slice(0, 12) : [];
+            const note = String(t.note || '').trim();
+            const done = !!t.done;
+            const createdAt = Number(t.createdAt) || Date.now();
+            const updatedAt = Number(t.updatedAt) || createdAt;
+            const reminded30 = !!t.reminded30;
+            return { id, title, priority, dueDate, tags, note, done, reminded30, createdAt, updatedAt };
+        }
+
+        function debounce(fn, delay = 250) {
+            let timer = null;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(null, args), delay);
+            };
+        }
+
+        function toast(message, ms = 4500) {
+            let wrap = document.querySelector('.toast-wrap');
+            if (!wrap) {
+                wrap = document.createElement('div');
+                wrap.className = 'toast-wrap';
+                document.body.appendChild(wrap);
+            }
+            const el = document.createElement('div');
+            el.className = 'toast';
+            el.textContent = message;
+            wrap.appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, ms - 300);
+            setTimeout(() => wrap.removeChild(el), ms);
+        }
+
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) { toast('当前浏览器不支持系统通知'); return false; }
+            if (Notification.permission === 'granted') return true;
+            if (Notification.permission === 'denied') { toast('通知已被禁用，请在浏览器设置中开启'); return false; }
+            const res = await Notification.requestPermission();
+            return res === 'granted';
+        }
+
+        function notify(title, body) {
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const n = new Notification(title, { body });
+                    setTimeout(() => n.close(), 8000);
+                }
+            } catch {}
+            toast(`${title}：${body}`);
+        }
+
+        function scheduleDueReminders() {
+            if (notifyTimer) clearInterval(notifyTimer);
+            const tick = () => {
+                const now = Date.now();
+                for (const t of tasks) {
+                    if (!t.dueDate || t.done) continue;
+                    const due = new Date(t.dueDate).getTime();
+                    const diff = due - now;
+                    if (diff <= 30 * 60 * 1000 && diff > 0 && !t.reminded30) {
+                        notify('任务即将到期(30分钟)', `${t.title} · ${formatDate(t.dueDate)}`);
+                        t.reminded30 = true;
+                        saveTasks();
+                    }
+                    if (diff <= 0 && t.reminded30 !== true) {
+                        // 若错过 30 分钟提醒，页面被节流导致延迟，也应补发到期提醒
+                        notify('任务已到期', `${t.title} · ${formatDate(t.dueDate)}`);
+                        t.reminded30 = true;
+                        saveTasks();
+                    }
+                }
+                // 定时刷新看板与列表，以反映“即将到期/已超期”状态变化
+                renderDashboard();
+                renderTasks();
+            };
+            tick();
+            const interval = document.hidden ? 60 * 1000 : 15 * 1000;
+            notifyTimer = setInterval(tick, interval);
+        }
+
+        function startUiAutoRefresh() {
+            if (uiRefreshTimer) clearInterval(uiRefreshTimer);
+            const refresh = () => { renderTasks(); renderDashboard(); };
+            refresh();
+            uiRefreshTimer = setInterval(refresh, 60 * 1000);
+        }
+
+        function initEvents() {
+            $('taskForm').addEventListener('submit', handleSubmit);
+            $('resetBtn').addEventListener('click', () => { $('taskForm').reset(); formTags = []; renderFormTags(formTags); });
+            $('cancelEditBtn').addEventListener('click', cancelEdit);
+            $('addTagBtn').addEventListener('click', () => {
+                const val = $('tagInput').value.trim();
+                if (!val) return;
+                if (!formTags.find(x => x.toLowerCase() === val.toLowerCase())) formTags.push(val);
+                $('tagInput').value = '';
+                renderFormTags(formTags);
+                renderTagSuggest();
+                $('tagInput').focus();
+            });
+            $('tagInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); $('addTagBtn').click(); }
+            });
+
+            const rerender = () => renderTasks();
+            $('statusFilter').addEventListener('change', rerender);
+            $('priorityFilter').addEventListener('change', rerender);
+            $('sortSelect').addEventListener('change', rerender);
+            $('searchInput').addEventListener('input', debounce(rerender, 200));
+            // 标签建议需在每次任务变更后刷新
+            renderTagSuggest();
+
+            $('toggleCompletedBtn').addEventListener('click', () => { showCompleted = !showCompleted; renderTasks(); });
+            $('clearCompletedBtn').addEventListener('click', clearCompleted);
+
+            $('exportBtn').addEventListener('click', exportJson);
+            $('importBtn').addEventListener('click', () => $('importFile').click());
+            $('importFile').addEventListener('change', (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (f) importJson(f);
+                e.target.value = '';
+            });
+
+            $('enableNotifyBtn').addEventListener('click', async () => {
+                const ok = await requestNotificationPermission();
+                toast(ok ? '通知已启用' : '未启用通知');
+            });
+            $('refreshDashboardBtn').addEventListener('click', renderDashboard);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === '/') {
+                    e.preventDefault();
+                    $('searchInput').focus();
+                }
+                if (e.ctrlKey && (e.key === 'Enter' || e.key === '\\n')) {
+                    if (document.activeElement === $('titleInput')) {
+                        e.preventDefault();
+                        $('taskForm').requestSubmit();
+                    }
+                }
+            });
+
+            // 页面重新可见时立即刷新一次
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    renderTasks();
+                    renderDashboard();
+                }
+                // 重启提醒定时器，前台使用更短的轮询间隔
+                scheduleDueReminders();
+            });
+        }
+
+        function applyTheme(theme) {
+            const t = theme === 'light' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+            const sel = document.getElementById('themeSelect');
+            if (sel) sel.value = t;
+            try { localStorage.setItem(THEME_KEY, t); } catch {}
+        }
+
+        function initTheme() {
+            let t = 'dark';
+            try {
+                const saved = localStorage.getItem(THEME_KEY);
+                if (saved === 'light' || saved === 'dark') t = saved;
+                else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) t = 'light';
+            } catch {}
+            applyTheme(t);
+            const sel = document.getElementById('themeSelect');
+            if (sel) sel.addEventListener('change', (e) => applyTheme(e.target.value));
+        }
+
+        function renderDashboard() {
+            const total = tasks.length;
+            const done = tasks.filter(t => t.done).length;
+            const rate = total ? Math.round(done * 100 / total) : 0;
+            const bar = $('progressBar');
+            const txt = $('progressText');
+            if (bar) bar.style.width = `${rate}%`;
+            if (txt) txt.textContent = `${rate}% (${done}/${total})`;
+
+            const priDist = {1:0,2:0,3:0,4:0};
+            tasks.forEach(t => priDist[t.priority] = (priDist[t.priority]||0) + 1);
+            const priWrap = $('priorityDist');
+            if (priWrap) {
+                priWrap.innerHTML = '';
+                const totalPri = Object.values(priDist).reduce((a,b)=>a+b,0) || 1;
+                const labels = {1:'紧急',2:'高',3:'中',4:'低'};
+                Object.entries(priDist).forEach(([k,v])=>{
+                    const row = document.createElement('div'); row.className = 'dist-row';
+                    const lab = document.createElement('div'); lab.className = 'muted'; lab.textContent = labels[k];
+                    const bar = document.createElement('div'); bar.className = 'dist-bar';
+                    const fill = document.createElement('span'); fill.style.width = `${Math.round(v*100/totalPri)}%`;
+                    bar.appendChild(fill);
+                    const val = document.createElement('div'); val.className = 'muted'; val.textContent = String(v);
+                    row.appendChild(lab); row.appendChild(bar); row.appendChild(val);
+                    priWrap.appendChild(row);
+                });
+            }
+
+            const tagMap = new Map();
+            tasks.forEach(t => (t.tags||[]).forEach(tag => tagMap.set(tag, (tagMap.get(tag)||0)+1)));
+            const tagWrap = $('tagDist');
+            if (tagWrap) {
+                tagWrap.innerHTML = '';
+                const top = Array.from(tagMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,8);
+                if (!top.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty';
+                    empty.textContent = '暂无标签';
+                    tagWrap.appendChild(empty);
+                } else {
+                    const totalTag = top.reduce((a, [,v])=>a+v, 0) || 1;
+                    for (const [tag, count] of top) {
+                        const row = document.createElement('div'); row.className = 'dist-row';
+                        const lab = document.createElement('div'); lab.className = 'muted'; lab.textContent = tag;
+                        const bar = document.createElement('div'); bar.className = 'dist-bar';
+                        const fill = document.createElement('span'); fill.style.width = `${Math.round(count*100/totalTag)}%`;
+                        bar.appendChild(fill);
+                        const val = document.createElement('div'); val.className = 'muted'; val.textContent = String(count);
+                        row.appendChild(lab); row.appendChild(bar); row.appendChild(val);
+                        tagWrap.appendChild(row);
+                    }
+                }
+            }
+
+            const dueWrap = $('dueSoonList');
+            if (dueWrap) {
+                dueWrap.innerHTML = '';
+                const soon = tasks.filter(t => t.dueDate && !t.done)
+                    .map(t => [t, new Date(t.dueDate).getTime()])
+                    .filter(([,ts]) => ts - Date.now() <= 24*60*60*1000 && ts - Date.now() > 0)
+                    .sort((a,b)=>a[1]-b[1])
+                    .map(([t])=>t)
+                    .slice(0, 10);
+                if (!soon.length) {
+                    const li = document.createElement('li'); li.className='empty'; li.textContent='暂无';
+                    dueWrap.appendChild(li);
+                } else {
+                    for (const t of soon) {
+                        const li = document.createElement('li'); li.className='item card';
+                        const main = document.createElement('div'); main.className='item-main';
+                        const title = document.createElement('div'); title.className='title'; title.textContent = t.title;
+                        const info = document.createElement('div'); info.className='muted'; info.textContent = `截止：${formatDate(t.dueDate)}`;
+                        main.appendChild(title); main.appendChild(info);
+                        li.appendChild(document.createElement('div')); // placeholder for checkbox grid column
+                        li.appendChild(main);
+                        li.appendChild(document.createElement('div')); // placeholder for actions grid column
+                        dueWrap.appendChild(li);
+                    }
+                }
+            }
+            const overdueWrap = $('overdueList');
+            if (overdueWrap) {
+                overdueWrap.innerHTML = '';
+                const overdueCountEl = $('overdueCount');
+                const overdueAll = tasks.filter(t => t.dueDate && !t.done && new Date(t.dueDate).getTime() < Date.now());
+                if (overdueCountEl) overdueCountEl.textContent = String(overdueAll.length);
+                const overdue = [...overdueAll]
+                    .sort((a,b)=> new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+                    .slice(0, 10);
+                if (!overdue.length) {
+                    const li = document.createElement('li'); li.className='empty'; li.textContent='暂无';
+                    overdueWrap.appendChild(li);
+                } else {
+                    for (const t of overdue) {
+                        const li = document.createElement('li'); li.className='item card';
+                        const main = document.createElement('div'); main.className='item-main';
+                        const title = document.createElement('div'); title.className='title'; title.textContent = t.title;
+                        const info = document.createElement('div'); info.className='muted';
+                        const dueText = `截止：${formatDate(t.dueDate)}`;
+                        const span = document.createElement('span'); span.className='overdue'; span.textContent='已超期';
+                        info.appendChild(document.createTextNode(dueText + ' · '));
+                        info.appendChild(span);
+                        main.appendChild(title); main.appendChild(info);
+                        li.appendChild(document.createElement('div'));
+                        li.appendChild(main);
+                        li.appendChild(document.createElement('div'));
+                        overdueWrap.appendChild(li);
+                    }
+                }
+            }
+        }
+
+        function boot() {
+            loadTasks();
+            renderStats();
+            initEvents();
+            initTheme();
+            renderTasks();
+            renderDashboard();
+            scheduleDueReminders();
+            startUiAutoRefresh();
+        }
+
+        boot();
+    </script>
+</body>
+</html>
